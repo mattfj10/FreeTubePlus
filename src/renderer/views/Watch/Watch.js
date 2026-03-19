@@ -71,16 +71,9 @@ export default defineComponent({
     'watch-video-recommendations': WatchVideoRecommendations,
     'ft-age-restricted': FtAgeRestricted
   },
-  beforeRouteLeave: async function (to, from, next) {
+  beforeRouteLeave: function (to, from, next) {
+    // Save progress only; player teardown runs in deactivated/beforeUnmount so other tabs keep state.
     this.handleRouteChange()
-    window.removeEventListener('beforeunload', this.handleWatchProgressAutoSave)
-    document.removeEventListener('keydown', this.resetAutoplayInterruptionTimeout)
-    document.removeEventListener('click', this.resetAutoplayInterruptionTimeout)
-
-    if (this.$refs.player) {
-      await this.destroyPlayer()
-    }
-
     next()
   },
   data: function () {
@@ -155,6 +148,8 @@ export default defineComponent({
       adEndTimeUnixMs: 0,
 
       onMountedRun: false,
+      /** True while this instance is cached by KeepAlive (not the visible tab). */
+      isKeepAliveInactive: false,
 
       // error handling/messages
       /** @type {string|null} */
@@ -316,7 +311,10 @@ export default defineComponent({
     },
   },
   watch: {
-    async $route() {
+    async $route(to) {
+      if (this.isKeepAliveInactive) { return }
+      if (!to.path.startsWith('/watch/')) { return }
+      if (this.videoId !== '' && to.params.id !== this.videoId) { return }
       await this.reloadView()
     },
     userPlaylistsReady() {
@@ -336,7 +334,41 @@ export default defineComponent({
   mounted: function () {
     this.onMountedDependOnLocalStateLoading()
   },
+  activated: function () {
+    this.isKeepAliveInactive = false
+    this.attachWatchWindowListeners()
+
+    if (this.$route.path.startsWith('/watch/') && this.$route.params.id !== this.videoId) {
+      this.reloadView().catch(() => {})
+    }
+  },
+  deactivated: function () {
+    this.isKeepAliveInactive = true
+    this.detachWatchWindowListeners()
+  },
+  beforeUnmount: function () {
+    this.detachWatchWindowListeners()
+    if (this.$refs.player) {
+      this.destroyPlayer().catch(() => {})
+    }
+  },
   methods: {
+    attachWatchWindowListeners: function () {
+      document.removeEventListener('keydown', this.resetAutoplayInterruptionTimeout)
+      document.removeEventListener('click', this.resetAutoplayInterruptionTimeout)
+      document.addEventListener('keydown', this.resetAutoplayInterruptionTimeout)
+      document.addEventListener('click', this.resetAutoplayInterruptionTimeout)
+      window.removeEventListener('beforeunload', this.handleWatchProgressAutoSave)
+      window.addEventListener('beforeunload', this.handleWatchProgressAutoSave)
+      this.resetAutoplayInterruptionTimeout()
+    },
+
+    detachWatchWindowListeners: function () {
+      window.removeEventListener('beforeunload', this.handleWatchProgressAutoSave)
+      document.removeEventListener('keydown', this.resetAutoplayInterruptionTimeout)
+      document.removeEventListener('click', this.resetAutoplayInterruptionTimeout)
+    },
+
     async reloadView() {
       await this.handleRouteChange()
 
@@ -390,13 +422,7 @@ export default defineComponent({
         this.getVideoInformationLocal()
       }
 
-      document.removeEventListener('keydown', this.resetAutoplayInterruptionTimeout)
-      document.removeEventListener('click', this.resetAutoplayInterruptionTimeout)
-      document.addEventListener('keydown', this.resetAutoplayInterruptionTimeout)
-      document.addEventListener('click', this.resetAutoplayInterruptionTimeout)
-
-      window.addEventListener('beforeunload', this.handleWatchProgressAutoSave)
-      this.resetAutoplayInterruptionTimeout()
+      this.attachWatchWindowListeners()
     },
 
     setViewingModeOnFirstLoad: function () {

@@ -57,11 +57,13 @@
           v-slot="{ Component }"
           class="routerView"
         >
-          <Transition
-            mode="out-in"
-            name="fade"
-          >
-            <component :is="Component" />
+          <Transition name="fade">
+            <KeepAlive :max="12">
+              <component
+                :is="Component"
+                :key="route.fullPath"
+              />
+            </KeepAlive>
           </Transition>
         </RouterView>
       </FtFlexBox>
