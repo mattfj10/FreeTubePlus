@@ -2295,6 +2295,18 @@ function runApp() {
             },
             type: 'normal'
           },
+          {
+            label: 'New Tab',
+            accelerator: 'CmdOrCtrl+T',
+            click: (_menuItem, browserWindow, _event) => {
+              if (browserWindow == null || !isFreeTubeUrl(browserWindow.webContents.getURL())) {
+                return
+              }
+
+              browserWindow.webContents.send(IpcChannels.CREATE_NEW_TAB, '/')
+            },
+            type: 'normal'
+          },
           { type: 'separator' },
           {
             label: 'Preferences',

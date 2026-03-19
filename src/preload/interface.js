@@ -243,6 +243,15 @@ export default {
   },
 
   /**
+   * @param {(path: string, query?: Record<string, string>, searchQueryText?: string | null) => void} handler
+   */
+  handleCreateNewTab: (handler) => {
+    ipcRenderer.on(IpcChannels.CREATE_NEW_TAB, (_, path, query, searchQueryText) => {
+      handler(path, query, searchQueryText)
+    })
+  },
+
+  /**
    * Pass `null` to clear the handler
    * @param {(text: string) => void | null} handler
    */

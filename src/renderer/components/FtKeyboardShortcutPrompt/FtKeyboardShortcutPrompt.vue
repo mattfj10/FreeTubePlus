@@ -121,6 +121,7 @@ const localizedShortcutNameToShortcutsMappings = computed(() => {
     [t('KeyboardShortcutPrompt.Navigate to History'), [
       isMac ? 'NAVIGATE_TO_HISTORY_MAC' : 'NAVIGATE_TO_HISTORY',
     ]],
+    [t('KeyboardShortcutPrompt.New Tab'), ['NEW_TAB']],
     [t('KeyboardShortcutPrompt.New Window'), ['NEW_WINDOW']],
     [t('KeyboardShortcutPrompt.Minimize Window'), ['MINIMIZE_WINDOW']],
     [t('KeyboardShortcutPrompt.Close Window'), ['CLOSE_WINDOW']],
