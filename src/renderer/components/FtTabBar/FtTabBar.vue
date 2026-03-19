@@ -1,35 +1,44 @@
 <template>
-  <div class="tabBar">
-    <button
-      v-for="tab in tabs"
-      :key="tab.id"
-      class="tabButton"
-      :class="{ isActive: tab.id === activeTabId }"
-      :title="tab.title || fallbackTitle"
-      type="button"
-      @click="$emit('activate-tab', tab.id)"
-    >
-      <span class="tabTitle">{{ tab.title || fallbackTitle }}</span>
-      <span
-        class="closeButton"
-        :title="t('Close')"
-        role="button"
-        tabindex="0"
-        @click.stop="$emit('close-tab', tab.id)"
-        @keydown.enter.stop="$emit('close-tab', tab.id)"
-      >
-        <FontAwesomeIcon :icon="['fas', 'xmark']" />
-      </span>
-    </button>
+  <div class="tabBarStack">
+    <div
+      class="tabBarFlowSpacer"
+      aria-hidden="true"
+    />
+    <div class="tabBar">
+      <!-- Padding lives on the scrolling inner row so it doesn't leave a dead gap when tabs scroll horizontally -->
+      <div class="tabBarInner">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="tabButton"
+          :class="{ isActive: tab.id === activeTabId }"
+          :title="tab.title || fallbackTitle"
+          type="button"
+          @click="$emit('activate-tab', tab.id)"
+        >
+          <span class="tabTitle">{{ tab.title || fallbackTitle }}</span>
+          <span
+            class="closeButton"
+            :title="t('Close')"
+            role="button"
+            tabindex="0"
+            @click.stop="$emit('close-tab', tab.id)"
+            @keydown.enter.stop="$emit('close-tab', tab.id)"
+          >
+            <FontAwesomeIcon :icon="['fas', 'xmark']" />
+          </span>
+        </button>
 
-    <button
-      class="newTabButton"
-      type="button"
-      :title="t('New Tab')"
-      @click="$emit('create-tab')"
-    >
-      <FontAwesomeIcon :icon="['fas', 'plus']" />
-    </button>
+        <button
+          class="newTabButton"
+          type="button"
+          :title="t('New Tab')"
+          @click="$emit('create-tab')"
+        >
+          <FontAwesomeIcon :icon="['fas', 'plus']" />
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -37,7 +46,7 @@
 import { computed } from 'vue'
 import { useI18n } from '../../composables/use-i18n-polyfill'
 
-const props = defineProps({
+defineProps({
   tabs: {
     type: Array,
     required: true
@@ -55,20 +64,37 @@ const fallbackTitle = computed(() => t('New Tab'))
 </script>
 
 <style scoped>
+.tabBarStack {
+  position: relative;
+}
+
+.tabBarFlowSpacer {
+  block-size: var(--tab-bar-height);
+  flex-shrink: 0;
+}
+
 .tabBar {
-  align-items: center;
   background-color: var(--card-bg-color);
   border-block-end: 1px solid var(--tertiary-color);
-  display: flex;
-  gap: 6px;
-  inline-size: 100%;
-  inset-block-start: 60px;
+  box-shadow: 0 2px 1px 0 var(--primary-shadow-color);
+  inset-block-start: var(--top-nav-height, 60px);
+  inset-inline: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 6px 10px;
-  position: sticky;
+  padding-block: 6px;
+  padding-inline: 0;
+  position: fixed;
   scrollbar-width: thin;
   z-index: 3;
+}
+
+.tabBarInner {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-inline-size: min-content;
+  padding-inline: 10px;
 }
 
 .tabButton {
@@ -127,8 +153,7 @@ const fallbackTitle = computed(() => t('New Tab'))
 }
 
 @media only screen and (width <= 680px) {
-  .tabBar {
-    inset-block-start: 60px;
+  .tabBarInner {
     padding-inline: 8px;
   }
 

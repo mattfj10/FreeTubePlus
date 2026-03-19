@@ -14,6 +14,10 @@
   min-block-size: 100%;
 }
 
+.app.noTabBar {
+  --app-chrome-offset: var(--top-nav-height);
+}
+
 .appChrome {
   z-index: 4;
 }

@@ -5,7 +5,8 @@
       hideOutlines: outlinesHidden,
       isLocaleRightToLeft: isLocaleRightToLeft,
       isSideNavOpen: isSideNavOpen,
-      hideLabelsSideBar: hideLabelsSideBar && !isSideNavOpen
+      hideLabelsSideBar: hideLabelsSideBar && !isSideNavOpen,
+      noTabBar: tabs.length === 0
     }"
   >
     <div class="appChrome">
