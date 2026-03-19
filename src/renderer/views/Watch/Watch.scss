@@ -58,6 +58,28 @@
   position: static;
 }
 
+// Teleport host: normal layout uses display:contents so the player still participates in the grid.
+// Background tab: minimal fixed box under body so the media element is not in KeepAlive's hidden subtree.
+.watchPlayerTeleportHost {
+  display: contents;
+}
+
+.watchPlayerTeleportHostBackground {
+  contain: strict;
+  display: block !important;
+  position: fixed;
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  z-index: 0;
+  inline-size: 4px !important;
+  block-size: 4px !important;
+  max-inline-size: 4px !important;
+  max-block-size: 4px !important;
+  overflow: hidden;
+  opacity: 0.02;
+  pointer-events: none;
+}
+
 .videoLayout {
   @include dual-column-template;
 

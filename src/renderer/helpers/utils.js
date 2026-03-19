@@ -8,6 +8,7 @@ import { UnsupportedPlayerActions } from '../../constants'
 export const CHANNEL_HANDLE_REGEX = /^@[\w.-]{3,30}$/
 
 const PUBLISHED_TEXT_REGEX = /(\d+)\s?([a-z]+)/i
+let openInternalPathTabHandler = null
 
 /**
  * @param {string} sortPreference
@@ -224,17 +225,39 @@ export async function openExternalLink(url) {
 }
 
 /**
+ * Registers a callback to handle opening internal paths in new tabs.
+ * Pass null to remove the callback.
+ * @param {((params: { path: string, query?: object, searchQueryText?: string | null }) => void) | null} handler
+ */
+export function setOpenInternalPathTabHandler(handler) {
+  openInternalPathTabHandler = handler
+}
+
+/**
  * Opens an internal path in the same or a new window.
  * Optionally with query params and setting the contents of the search bar in the new window.
  * @param {object} params
  * @param {string} params.path the internal path to open
  * @param {boolean} params.doCreateNewWindow set to true to open a new window
+ * @param {boolean} params.doCreateNewTab set to true to open a new tab
  * @param {object} params.query the query params to use (optional)
  * @param {string} params.searchQueryText the text to show in the search bar in the new window (optional)
  */
-export function openInternalPath({ path, query = undefined, doCreateNewWindow, searchQueryText = null }) {
+export function openInternalPath({
+  path,
+  query = undefined,
+  doCreateNewWindow = false,
+  doCreateNewTab = false,
+  searchQueryText = null
+}) {
   if (process.env.IS_ELECTRON && doCreateNewWindow) {
     window.ftElectron.openInNewWindow(path, query, searchQueryText)
+  } else if (doCreateNewTab && typeof openInternalPathTabHandler === 'function') {
+    openInternalPathTabHandler({
+      path,
+      query,
+      searchQueryText
+    })
   } else {
     router.push({
       path,

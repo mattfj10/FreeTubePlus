@@ -1,56 +1,74 @@
 <template>
   <div
-    v-if="dataReady"
     class="app"
     :class="{
       hideOutlines: outlinesHidden,
       isLocaleRightToLeft: isLocaleRightToLeft,
       isSideNavOpen: isSideNavOpen,
-      hideLabelsSideBar: hideLabelsSideBar && !isSideNavOpen
+      hideLabelsSideBar: hideLabelsSideBar && !isSideNavOpen,
+      noTabBar: tabs.length === 0
     }"
   >
-    <TopNav
-      :inert="isAnyPromptOpen"
-    />
-    <SideNav
-      :inert="isAnyPromptOpen"
-    />
-    <FtFlexBox
-      class="flexBox routerView"
-      role="main"
-      :inert="isAnyPromptOpen"
+    <div class="appChrome">
+      <TopNav
+        :inert="isAnyPromptOpen"
+      />
+      <FtTabBar
+        v-if="tabs.length > 0"
+        :tabs="tabs"
+        :active-tab-id="activeTabId"
+        :inert="isAnyPromptOpen"
+        @create-tab="createNewTab"
+        @activate-tab="activateTab"
+        @close-tab="closeTab"
+      />
+    </div>
+    <div
+      v-if="dataReady"
+      class="appBody"
     >
-      <div
-        v-if="showUpdatesBanner || showBlogBanner"
-        class="banner-wrapper"
+      <SideNav
+        :inert="isAnyPromptOpen"
+      />
+      <FtFlexBox
+        class="flexBox appMainContent"
+        role="main"
+        :inert="isAnyPromptOpen"
       >
-        <FtNotificationBanner
-          v-if="showUpdatesBanner"
-          class="banner"
-          :message="updateBannerMessage"
-          role="link"
-          @click="handleUpdateBannerClick"
-        />
-        <FtNotificationBanner
-          v-if="showBlogBanner"
-          class="banner"
-          :message="blogBannerMessage"
-          role="link"
-          @click="handleNewBlogBannerClick"
-        />
-      </div>
-      <RouterView
-        v-slot="{ Component }"
-        class="routerView"
-      >
-        <Transition
-          mode="out-in"
-          name="fade"
+        <div
+          v-if="showUpdatesBanner || showBlogBanner"
+          class="banner-wrapper"
         >
-          <component :is="Component" />
-        </Transition>
-      </RouterView>
-    </FtFlexBox>
+          <FtNotificationBanner
+            v-if="showUpdatesBanner"
+            class="banner"
+            :message="updateBannerMessage"
+            role="link"
+            @click="handleUpdateBannerClick"
+          />
+          <FtNotificationBanner
+            v-if="showBlogBanner"
+            class="banner"
+            :message="blogBannerMessage"
+            role="link"
+            @click="handleNewBlogBannerClick"
+          />
+        </div>
+        <RouterView
+          v-slot="{ Component }"
+          class="routerView"
+        >
+          <Transition name="fade">
+            <KeepAlive :max="12">
+              <component
+                :is="Component"
+                :key="route.fullPath"
+              />
+            </KeepAlive>
+          </Transition>
+        </RouterView>
+      </FtFlexBox>
+    </div>
     <FtPrompt
       v-if="showReleaseNotes"
       theme="readable-width"
@@ -130,11 +148,12 @@ import FtCreatePlaylistPrompt from './components/FtCreatePlaylistPrompt/FtCreate
 import FtKeyboardShortcutPrompt from './components/FtKeyboardShortcutPrompt/FtKeyboardShortcutPrompt.vue'
 import FtSearchFilters from './components/FtSearchFilters/FtSearchFilters.vue'
 import { vSaferHtml } from './directives/vSaferHtml.js'
+import FtTabBar from './components/FtTabBar/FtTabBar.vue'
 
 import store from './store/index'
 
 import packageDetails from '../../package.json'
-import { openExternalLink, openInternalPath, showToast } from './helpers/utils'
+import { openExternalLink, openInternalPath, setOpenInternalPathTabHandler, showToast } from './helpers/utils'
 import { translateWindowTitle } from './helpers/strings'
 import { loadLocale } from './i18n/index'
 
@@ -166,17 +185,95 @@ const showCreatePlaylistPrompt = computed(() => store.getters.getShowCreatePlayl
 /** @type {import('vue').ComputedRef<boolean>} */
 const showProgressBar = computed(() => store.getters.getShowProgressBar)
 
+/** @type {import('vue').ComputedRef<{ id: number, title: string, path: string, query: object }[]>} */
+const tabs = computed(() => store.getters.getTabs)
+/** @type {import('vue').ComputedRef<number | null>} */
+const activeTabId = computed(() => store.getters.getActiveTabId)
+/** @type {import('vue').ComputedRef<{ id: number, path: string, query: object } | null>} */
+const activeTab = computed(() => store.getters.getActiveTab)
+
 const landingPage = computed(() => '/' + store.getters.getLandingPage)
 
 /** @type {import('vue').ComputedRef<string>} */
 const defaultInvidiousInstance = computed(() => store.getters.getDefaultInvidiousInstance)
 
 const dataReady = ref(false)
+const isApplyingTabRoute = ref(false)
+
+function normalizeQuery(query) {
+  const normalizedQuery = {}
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (value == null) {
+      continue
+    }
+    normalizedQuery[key] = value
+  }
+  return normalizedQuery
+}
+
+function isRouteMatch(path, query) {
+  const routeQuery = normalizeQuery(route.query)
+  const tabQuery = normalizeQuery(query)
+
+  return route.path === path && JSON.stringify(routeQuery) === JSON.stringify(tabQuery)
+}
+
+function getFallbackRouteTitle(path, query = {}) {
+  const resolvedRoute = router.resolve({
+    path,
+    query
+  })
+
+  const title = translateWindowTitle(resolvedRoute.meta.title)
+  return title ? `${title} - ${packageDetails.productName}` : packageDetails.productName
+}
+
+async function createNewTab() {
+  const tab = await store.dispatch('createTab', {
+    path: landingPage.value,
+    title: getFallbackRouteTitle(landingPage.value)
+  })
+  activateTab(tab.id)
+}
+
+function activateTab(tabId) {
+  store.dispatch('activateTab', tabId)
+}
+
+function closeTab(tabId) {
+  store.dispatch('closeTab', tabId)
+}
 
 onMounted(async () => {
   await store.dispatch('grabUserSettings')
 
   updateTheme()
+
+  await store.dispatch('initializeTabs', {
+    path: route.path,
+    query: route.query
+  })
+
+  const currentActiveTab = store.getters.getActiveTab
+  if (currentActiveTab != null && !isRouteMatch(currentActiveTab.path, currentActiveTab.query)) {
+    isApplyingTabRoute.value = true
+    await router.replace({
+      path: currentActiveTab.path,
+      query: currentActiveTab.query
+    })
+    isApplyingTabRoute.value = false
+  }
+
+  setOpenInternalPathTabHandler(({ path, query, searchQueryText }) => {
+    store.dispatch('createTab', {
+      path,
+      query,
+      title: getFallbackRouteTitle(path, query),
+      searchQueryText
+    }).then((tab) => {
+      store.dispatch('activateTab', tab.id)
+    })
+  })
 
   await store.dispatch('fetchInvidiousInstancesFromFile')
   if (defaultInvidiousInstance.value === '') {
@@ -211,10 +308,6 @@ onMounted(async () => {
     }, 500)
   })
 
-  if (route.path === '/') {
-    router.replace({ path: landingPage.value })
-  }
-
   setWindowTitle()
 
   document.addEventListener('keydown', handleKeyboardShortcuts)
@@ -228,6 +321,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('dragstart', handleDragStart)
   document.removeEventListener('click', handleClick)
   document.removeEventListener('auxclick', handleAuxClick)
+  setOpenInternalPathTabHandler(null)
 })
 
 /** @type {import('vue').ComputedRef<string>} */
@@ -468,7 +562,7 @@ function handleLinkClick(event) {
     // `auxclick` is the event type for non-left click
     // https://developer.mozilla.org/en-US/docs/Web/API/Element/auxclick_event
     handleYoutubeLink(href, {
-      doCreateNewWindow: event.type === 'auxclick'
+      doCreateNewTab: event.type === 'auxclick'
     })
   } else if (externalLinkHandling.value === 'doNothing') {
     // Let user know opening external link is disabled via setting
@@ -484,7 +578,7 @@ function handleLinkClick(event) {
   }
 }
 
-async function handleYoutubeLink(href, { doCreateNewWindow = false } = {}) {
+async function handleYoutubeLink(href, { doCreateNewWindow = false, doCreateNewTab = false } = {}) {
   const result = await store.dispatch('getYoutubeUrlInfo', href)
 
   switch (result.urlType) {
@@ -502,7 +596,8 @@ async function handleYoutubeLink(href, { doCreateNewWindow = false } = {}) {
       openInternalPath({
         path: `/watch/${videoId}`,
         query,
-        doCreateNewWindow
+        doCreateNewWindow,
+        doCreateNewTab
       })
       break
     }
@@ -513,7 +608,8 @@ async function handleYoutubeLink(href, { doCreateNewWindow = false } = {}) {
       openInternalPath({
         path: `/playlist/${playlistId}`,
         query,
-        doCreateNewWindow
+        doCreateNewWindow,
+        doCreateNewTab
       })
       break
     }
@@ -525,6 +621,7 @@ async function handleYoutubeLink(href, { doCreateNewWindow = false } = {}) {
         path: `/search/${encodeURIComponent(searchQuery)}`,
         query,
         doCreateNewWindow,
+        doCreateNewTab,
         searchQueryText: searchQuery
       })
       break
@@ -534,7 +631,8 @@ async function handleYoutubeLink(href, { doCreateNewWindow = false } = {}) {
       const { hashtag } = result
       openInternalPath({
         path: `/hashtag/${encodeURIComponent(hashtag)}`,
-        doCreateNewWindow
+        doCreateNewWindow,
+        doCreateNewTab
       })
       break
     }
@@ -545,7 +643,8 @@ async function handleYoutubeLink(href, { doCreateNewWindow = false } = {}) {
       openInternalPath({
         path: `/post/${postId}`,
         query,
-        doCreateNewWindow
+        doCreateNewWindow,
+        doCreateNewTab
       })
       break
     }
@@ -556,6 +655,7 @@ async function handleYoutubeLink(href, { doCreateNewWindow = false } = {}) {
       openInternalPath({
         path: `/channel/${channelId}/${subPath}`,
         doCreateNewWindow,
+        doCreateNewTab,
         query: {
           url
         }
@@ -569,7 +669,8 @@ async function handleYoutubeLink(href, { doCreateNewWindow = false } = {}) {
     case 'userplaylists':
       openInternalPath({
         path: `/${result.urlType}`,
-        doCreateNewWindow
+        doCreateNewWindow,
+        doCreateNewTab
       })
       break
 
@@ -619,7 +720,33 @@ const appTitle = computed(() => store.getters.getAppTitle)
 
 watch(appTitle, (value) => {
   document.title = value
+  store.dispatch('setActiveTabTitle', value)
 })
+
+watch(activeTab, async (tab) => {
+  if (tab == null || isRouteMatch(tab.path, tab.query)) {
+    return
+  }
+
+  isApplyingTabRoute.value = true
+  await router.replace({
+    path: tab.path,
+    query: tab.query
+  })
+  isApplyingTabRoute.value = false
+})
+
+watch(route, () => {
+  if (isApplyingTabRoute.value) {
+    return
+  }
+
+  store.dispatch('updateActiveTabRoute', {
+    path: route.path,
+    query: route.query,
+    title: getFallbackRouteTitle(route.path, route.query)
+  })
+}, { deep: true })
 
 watch(windowTitle, setWindowTitle)
 

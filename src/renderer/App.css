@@ -4,16 +4,40 @@
 }
 
 .app {
+  --top-nav-height: 60px;
+  --tab-bar-height: 46px;
+  --app-chrome-offset: calc(var(--top-nav-height) + var(--tab-bar-height));
+
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   font-family: Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  block-size: 100%;
+  min-block-size: 100%;
+}
+
+.app.noTabBar {
+  --app-chrome-offset: var(--top-nav-height);
+}
+
+.appChrome {
+  z-index: 4;
+}
+
+.appBody {
+  display: flex;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+.appMainContent {
+  display: block;
+  flex: 1 1 auto;
+  margin-block: 18px;
+  margin-inline: 10px;
+  min-inline-size: 0;
 }
 
 .routerView {
-  flex: 1 1 0%;
-  margin-block: 18px;
-  margin-inline: 10px;
+  min-inline-size: 0;
 }
 
 .banner {
@@ -62,8 +86,12 @@
 }
 
 @media only screen and (width <= 680px) {
-  .routerView {
-    margin-block: 68px;
+  .appChrome {
+    padding-block-start: var(--top-nav-height);
+  }
+
+  .appMainContent {
+    margin-block: 8px 68px;
     margin-inline: 8px;
   }
 
@@ -73,7 +101,7 @@
   }
 
   .flexBox {
-    margin-block: 60px -75px;
+    margin-block: 0;
   }
 
   .changeLogText {

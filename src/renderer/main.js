@@ -283,6 +283,16 @@ router.isReady().then(() => {
 
 // to avoid accessing electron api from web app build
 if (process.env.IS_ELECTRON) {
+  window.ftElectron.handleCreateNewTab((path, query, searchQueryText) => {
+    store.dispatch('createTab', {
+      path,
+      query,
+      searchQueryText
+    }).then((tab) => {
+      store.dispatch('activateTab', tab.id)
+    })
+  })
+
   window.ftElectron.handleChangeView((route) => {
     router.push(route)
   })

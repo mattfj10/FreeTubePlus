@@ -3189,6 +3189,10 @@ export default defineComponent({
       video.value.pause()
     }
 
+    function play() {
+      return video.value.play()
+    }
+
     function getCurrentTime() {
       return video.value.currentTime
     }
@@ -3255,6 +3259,7 @@ export default defineComponent({
 
       isPaused,
       pause,
+      play,
       getCurrentTime,
       setCurrentTime,
       destroyPlayer

@@ -54,6 +54,17 @@
         />
       </button>
       <button
+        class="navNewTabButton navButton"
+        :aria-label="t('New Tab')"
+        :title="newTabText"
+        @click="createNewTab"
+      >
+        <FontAwesomeIcon
+          class="navIcon"
+          :icon="['fas', 'plus']"
+        />
+      </button>
+      <button
         class="navNewWindowButton navButton"
         :aria-label="t('Open New Window')"
         :title="newWindowText"
@@ -243,6 +254,18 @@ const newWindowText = computed(() => {
     KeyboardShortcuts.APP.GENERAL.NEW_WINDOW
   )
 })
+
+const newTabText = computed(() => {
+  return localizeAndAddKeyboardShortcutToActionTitle(
+    t('New Tab'),
+    KeyboardShortcuts.APP.GENERAL.NEW_TAB
+  )
+})
+
+async function createNewTab() {
+  const tab = await store.dispatch('createTab', { path: landingPage.value })
+  store.dispatch('activateTab', tab.id)
+}
 
 function createNewWindow() {
   const url = new URL(window.location.href)
@@ -612,6 +635,13 @@ function handleKeyboardShortcuts(event) {
       searchInput.value?.focus()
       searchInput.value?.select()
     }, 0)
+    return
+  }
+
+  const ctrlOrCommandT = ctrlOrCommandPressed && (event.key === 'T' || event.key === 't')
+  if (ctrlOrCommandT) {
+    event.preventDefault()
+    createNewTab()
   }
 }
 
